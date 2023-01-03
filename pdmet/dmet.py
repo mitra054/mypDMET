@@ -33,7 +33,6 @@ sys.path.append('/panfs/roc/groups/6/gagliard/phamx494/pyWannier90/src')
 import pywannier90
 
 
-
 class pDMET:
     def __init__(self, cell, kmf, w90, solver = 'HF', mc_dup=None, state_average_mix_=None, nevpt2_spin=None):
         '''
@@ -65,12 +64,12 @@ class pDMET:
         self.OEH_type = 'FOCK' # Options: FOCK/OEI        
         
         # QC Solver    
-        solver_list   = ['HF', 'MP2', 'CASCI', 'DMRG-CI', 'CASSCF', 'CASPDFT', 'DMRG-SCF', \
-                            'SS-CASPDFT','SS-CASSCF', 'SS-DMRG-SCF', 'SA-CASPDFT', 'SA-CASSCF', 'SA-DMRG-SCF', \
+        solver_list   = ['HF', 'MP2', 'CASCI', 'DMRG-CI', 'CASSCF', 'DMRG-SCF', \
+                            'SS-CASSCF', 'SS-DMRG-SCF', 'SA-CASSCF', 'SA-DMRG-SCF', \
                             'FCI', 'DMRG', 'RCCSD', 'RCCSD_T', 'SHCI'
                             ]
         assert solver in solver_list, "Solver options: HF, MP2, CASCI, DMRG-CI, \
-                                     CASSCF, CASPDFT, DMRG-SCF, SS-CASPDFT, SS-CASSCF, SS-DMRG-SCF, SA-CASPDFT, SA-CASSCF, SA-DMRG-SCF \
+                                     CASSCF, DMRG-SCF,SS-CASSCF, SS-DMRG-SCF, SA-CASSCF, SA-DMRG-SCF \
                                      FCI, DMRG, RCCSD, SHCI"
         self.solver   = solver        
         self.e_shift  = None         # Use to fix spin of the wrong state with FCI, hence CASCI/CASSCF solver
@@ -88,12 +87,12 @@ class pDMET:
         self.nevpt2_spin = nevpt2_spin
         self.state_average_ = None
         self.state_average_mix_  = None
-        if solver in ['CASCI', 'CASSCF', 'CASPDFT', 'SS-CASSCF', 'SS-CASPDFT', 'SS-DMRG-SCF', 'SA-CASSCF', 'SA-CASPDFT', 'SA-DMRG-SCF']:
+        if solver in ['CASCI', 'CASSCF', 'SS-CASSCF', 'SS-DMRG-SCF', 'SA-CASSCF', 'SA-DMRG-SCF']:
             self.cas    = None
             self.molist = None  
-            if solver in ['SS-CASSCF', 'SS-CASPDFT', 'SS-DMRG-SCF']:
+            if solver in ['SS-CASSCF', 'SS-DMRG-SCF']:
                 self.state_specific_ = 0
-            elif solver in ['SA-CASSCF', 'SA-CASPDFT', 'SA-DMRG-SCF']:
+            elif solver in ['SA-CASSCF', 'SA-DMRG-SCF']:
                 if state_average_mix_ is None:
                     self.state_average_ = [0.5, 0.5]
                 else:
@@ -314,7 +313,7 @@ class pDMET:
         print(qcsolvers.QCsolvers)
         self._SS = 0.5*self.twoS*(0.5*self.twoS + 1)       
         self.qcsolver = qcsolvers.QCsolvers(self.solver, self.twoS, self._is_ROHF, self.e_shift, self.nroots, self.state_percent, verbose=self.verbose, memory=self.max_memory) 
-        if self.solver in ['CASCI', 'CASSCF', 'CASPDFT', 'SS-CASSCF', 'SS-CASPDFT', 'SS-DMRG-SCF', 'SA-CASSCF', 'SA-CASPDFT', 'SA-DMRG-SCF']:
+        if self.solver in ['CASCI', 'CASSCF', 'SS-CASSCF', 'SS-DMRG-SCF', 'SA-CASSCF', 'SA-DMRG-SCF']:
             self.qcsolver.cas = self.cas
             self.qcsolver.molist = self.molist 
             if "SS-" in self.solver: 
@@ -373,19 +372,13 @@ class pDMET:
         elif self.solver in ['DMRG-CI']:
             e_cell, e_solver, RDM1 = self.qcsolver.CASCI(solver = 'CheMPS2', nevpt2_roots=self.nevpt2_roots, nevpt2_nroots=self.nevpt2_nroots)  
         elif self.solver in ['CASSCF']:
-            e_cell, e_solver, RDM1 = self.qcsolver.CASSCF(nevpt2_roots=self.nevpt2_roots, nevpt2_nroots=self.nevpt2_nroots, nevpt2_spin=self.nevpt2_spin)             
-        elif self.solver in ['CASPDFT']:
-            e_cell, e_solver, RDM1 = self.qcsolver.CASPDFT(nevpt2_roots=self.nevpt2_roots, nevpt2_nroots=self.nevpt2_nroots, nevpt2_spin=self.nevpt2_spin, cell=self.cell, mc_dup=self.mc_dup, kmf=self.kmf, w90=self.w90, emb_orbs = self.emb_orbs, ao2eo=self.ao2eo, mask4Gamma=self.mask4Gamma, OEH_type=self.OEH_type, emb_core_orbs = self.emb_core_orbs, core_orbs=self.core_orbs)     
+            e_cell, e_solver, RDM1 = self.qcsolver.CASSCF(nevpt2_roots=self.nevpt2_roots, nevpt2_nroots=self.nevpt2_nroots, nevpt2_spin=self.nevpt2_spin, cell=self.cell, mc_dup=self.mc_dup, kmf=self.kmf, w90=self.w90, emb_orbs = self.emb_orbs, ao2eo=self.ao2eo, mask4Gamma=self.mask4Gamma, OEH_type=self.OEH_type, emb_core_orbs = self.emb_core_orbs, core_orbs=self.core_orbs)     
         elif self.solver in ['DMRG-SCF']:
             e_cell, e_solver, RDM1 = self.qcsolver.CASSCF(solver = 'CheMPS2', nevpt2_roots=self.nevpt2_roots, nevpt2_nroots=self.nevpt2_nroots, nevpt2_spin=self.nevpt2_spin) 
         elif self.solver in ['SS-CASSCF']:
             e_cell, e_solver, RDM1 = self.qcsolver.CASSCF(state_specific_=self.state_specific_, nevpt2_roots=self.nevpt2_roots, nevpt2_nroots=self.nevpt2_nroots, nevpt2_spin=self.nevpt2_spin) 
         elif self.solver in ['SA-CASSCF']:
-            e_cell, e_solver, RDM1 = self.qcsolver.CASSCF(state_average_=self.state_average_, state_average_mix_=self.state_average_mix_, nevpt2_roots=self.nevpt2_roots, nevpt2_nroots=self.nevpt2_nroots, nevpt2_spin=self.nevpt2_spin)  
-        elif self.solver in ['SS-CASPDFT']:
-            e_cell, e_solver, RDM1 = self.qcsolver.CASPDFT(state_specific_=self.state_specific_, nevpt2_roots=self.nevpt2_roots, nevpt2_nroots=self.nevpt2_nroots, nevpt2_spin=self.nevpt2_spin, cell=self.cell, mc_dup=self.mc_dup, kmf=self.kmf, w90=self.w90, emb_orbs = self.emb_orbs, ao2eo=self.ao2eo, mask4Gamma=self.mask4Gamma, OEH_type=self.OEH_type, emb_core_orbs = self.emb_core_orbs, core_orbs=self.core_orbs) 
-        elif self.solver in ['SA-CASPDFT']:
-            e_cell, e_solver, RDM1 = self.qcsolver.CASPDFT(state_average_=self.state_average_, state_average_mix_=self.state_average_mix_, nevpt2_roots=self.nevpt2_roots, nevpt2_nroots=self.nevpt2_nroots, nevpt2_spin=self.nevpt2_spin, cell=self.cell, mc_dup=self.mc_dup, kmf=self.kmf, w90=self.w90, emb_orbs = self.emb_orbs, ao2eo=self.ao2eo, mask4Gamma=self.mask4Gamma, OEH_type=self.OEH_type, emb_core_orbs = self.emb_core_orbs, core_orbs=self.core_orbs)  
+            e_cell, e_solver, RDM1 = self.qcsolver.CASSCF(state_average_=self.state_average_, state_average_mix_=self.state_average_mix_, nevpt2_roots=self.nevpt2_roots, nevpt2_nroots=self.nevpt2_nroots, nevpt2_spin=self.nevpt2_spin, cell=self.cell, mc_dup=self.mc_dup, kmf=self.kmf, w90=self.w90, emb_orbs = self.emb_orbs, ao2eo=self.ao2eo, mask4Gamma=self.mask4Gamma, OEH_type=self.OEH_type, emb_core_orbs = self.emb_core_orbs, core_orbs=self.core_orbs)  
         elif self.solver in ['SS-DMRG-SCF']:
             e_cell, e_solver, RDM1 = self.qcsolver.CASSCF(solver = 'CheMPS2', state_specific_=self.state_specific_, nevpt2_roots=self.nevpt2_roots, nevpt2_nroots=self.nevpt2_nroots)  
         elif self.solver in ['SA-DMRG-SCF']:
@@ -520,7 +513,7 @@ class pDMET:
         else:      
             tprint.print_msg("   Bath type: %s | QC Solver: %s | 2S = %d | Nroots: %d" % (self.bathtype, self.solver, self.twoS, self.nroots))
             
-        if self.solver in ['CASCI', 'CASSCF', 'CASPDFT', 'SS-CASSCF', 'SS-CASPDFT', 'SS-DMRG-SCF', 'SA-CASSCF', 'SA-CASPDFT', 'SA-DMRG-SCF']:                
+        if self.solver in ['CASCI', 'CASSCF', 'SS-CASSCF', 'SS-DMRG-SCF', 'SA-CASSCF', 'SA-DMRG-SCF']:                
             if self.qcsolver.cas is not None: tprint.print_msg("   Active space     :", self.qcsolver.cas)
             if self.qcsolver.cas is not None: tprint.print_msg("   Active space MOs :", self.qcsolver.molist)
             if "SS-" in self.solver: tprint.print_msg("   State-specific CASSCF using state id :", self.state_specific_)

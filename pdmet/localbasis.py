@@ -228,16 +228,25 @@ class Local:
             emb_TEI : TEI projected into the embedding space
             emb_1RDM: 1RDM projected into the embedding space
         '''
-        J = lib.einsum('pqrs,rs->pq', emb_TEI, emb_1RDM)
-        K = lib.einsum('prqs,rs->pq', emb_TEI, emb_1RDM) 
+        # J = lib.einsum('pqrs,rs->pq', emb_TEI, emb_1RDM)
+        emb_TEI = lib.unpack_tril(emb_TEI)
+        # K = lib.einsum('prqs,rs->pq', emb_TEI, emb_1RDM)
+        # print("Shape of 1 RDM", emb_1RDM.shape)
+        # print("Shape of TEI", emb_TEI.shape)
+        VJ_P_CD = lib.einsum('kl,Pkl->P',emb_1RDM,emb_TEI)
+        J = lib.einsum('P,Pij->ij',VJ_P_CD,emb_TEI) #Check, this is still a dumb way
+        VK_P_CD = lib.einsum('kl,Pil->Pki',emb_1RDM,emb_TEI)
+        K = lib.einsum('Pki,Pkj->ij',VK_P_CD,emb_TEI)
         emb_actJK = J - 0.5*K
-        emb_coreJK = emb_JK - emb_actJK     # Subtract JK from the active space (frag + bath) from the totak JK
+        emb_coreJK = emb_JK - emb_actJK          # Subtract JK from the active space (frag + bath) from the totak JK
+        # print ("Shape of emb_coreJK", emb_coreJK.shape)
         return emb_coreJK
         
     def get_emb_TEI(self, ao2eo):
         '''Get embedding TEI with density fitting'''
         mydf = self.kmf.with_df   
-        TEI = df.get_emb_eri_gdf(self.cell, mydf, ao2eo)[0]       
+        # TEI = df.get_emb_eri_gdf(self.cell, mydf, ao2eo)[0]
+        TEI = df.get_emb_cderi_gdf(self.cell, mydf, ao2eo)[0]
         return TEI
         
     def get_TEI(self, ao2eo): 
