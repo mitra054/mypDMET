@@ -1118,7 +1118,8 @@ class QCsolvers:
             casdm1 = lib.einsum('bq,aq->ab', active_MO, casdm1)
             coredm1 = np.dot(core_MO, core_MO.T) * 2 #in local basis
             RDM1 = coredm1 + casdm1   
-            
+            #Activate the lower block only when you need casdm2s
+            """
             # Transform the casdm2_mo to local basis
             casdm2 = lib.einsum('ap,pqrs->aqrs', active_MO, casdm2_mo)
             casdm2 = lib.einsum('bq,aqrs->abrs', active_MO, casdm2)
@@ -1140,6 +1141,8 @@ class QCsolvers:
                        + 0.125 * lib.einsum('ijkl,ijkl->', RDM2[:,:Nimp,:,:], self.TEI[:,:Nimp,:,:]) \
                        + 0.125 * lib.einsum('ijkl,ijkl->', RDM2[:,:,:Nimp,:], self.TEI[:,:,:Nimp,:]) \
                        + 0.125 * lib.einsum('ijkl,ijkl->', RDM2[:,:,:,:Nimp], self.TEI[:,:,:,:Nimp])
+            """
+            ImpurityEnergy = 0.0
             e_cell = self.kmf_ecore + ImpurityEnergy         
             print('       State %d: E(Solver) = %12.8f  E(Imp) = %12.8f  <S^2> = %8.6f' % (state_id, e_tot, ImpurityEnergy, self.SS))  
         elif state_average_ is not None:
