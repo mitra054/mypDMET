@@ -191,6 +191,7 @@ def save_pdmet(pdmet, chkfile):
     uvec          = pdmet.uvec 
     umat          = pdmet.umat     
     emb_orbs      = pdmet.emb_orbs
+    emb_core_orbs      = pdmet.emb_core_orbs
     mf_mo         = pdmet.qcsolver.mf.mo_coeff
     actv1RDMloc   = pdmet.emb_corr_1RDM 
     
@@ -202,7 +203,8 @@ def save_pdmet(pdmet, chkfile):
                  'chempot'          : chempot,                
                  'uvec'             : uvec,
                  'umat'             : umat,                 
-                 'emb_orbs'         : emb_orbs,                
+                 'emb_orbs'         : emb_orbs, 
+                 'emb_core_orbs'    : emb_core_orbs,
                  'mf_mo'            : mf_mo,
                  'actv1RDMloc'      : actv1RDMloc}
                  
@@ -221,7 +223,8 @@ def load_pdmet(chkfile):
             self.chempot     = 0
             self.uvec        = False 
             self.umat        = False         
-            self.emb_orbs    = None               
+            self.emb_orbs    = None  
+            self.emb_core_orbs = None            
             self.mf_mo       = None
             self.mc_mo       = None     
             self.mc_mo_nat   = None   
@@ -230,7 +233,8 @@ def load_pdmet(chkfile):
                 self.chempot     = save_pdmet['chempot']
                 self.uvec        = save_pdmet['uvec']
                 self.umat        = save_pdmet['umat']                  
-                self.emb_orbs    = save_pdmet['emb_orbs']                             
+                self.emb_orbs    = save_pdmet['emb_orbs']
+                self.emb_core_orbs    = save_pdmet['emb_core_orbs']                 
                 self.mf_mo       = save_pdmet['mf_mo']        
                 self.actv1RDMloc = save_pdmet['actv1RDMloc'] 
                 if self.solver in ['CASCI', 'CASSCF', 'DMRG-CI', 'DMRG-SCF']:              

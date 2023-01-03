@@ -1,11 +1,11 @@
 cmake_minimum_required(VERSION 3.1 FATAL_ERROR)
 project(cpp_libdmet)
 
-set(anaconda "/home/gagliard/phamx494/anaconda")
+set(anaconda "/home/mitra054/.conda/envs/msi2")
 
 # Set INCLUDE and LIB 
-LINK_DIRECTORIES(/home/gagliard/phamx494/anaconda/lib)
-INCLUDE_DIRECTORIES(/home/gagliard/phamx494/anaconda/include)
+LINK_DIRECTORIES(/home/mitra054/.conda/envs/msi2/lib)
+INCLUDE_DIRECTORIES(/home/mitra054/.conda/envs/msi2/include)
 
 # Find the LAWrap for mkl_blas/lapack, pybind11
 find_package(LAWrap CONFIG REQUIRED)

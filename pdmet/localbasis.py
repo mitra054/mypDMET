@@ -95,13 +95,13 @@ class Local:
 
         # Core energy from the frozen orbitals
         self.e_core = cell.energy_nuc() + 1./self.Nkpts *lib.einsum('kij,kji->', full_OEI_k + 0.5*coreJK_kpts, self.coreDM_kpts).real
-               
+        
         # 1e integral for the active part
         self.actOEI_kpts = full_OEI_k + coreJK_kpts     
         
         # Fock for the active part          
-        self.fullfock_kpts = kmf.get_fock()            
-        self.loc_actFOCK_kpts = self.ao_2_loc(self.fullfock_kpts, self.ao2lo)     
+        self.fullfock_kpts = kmf.get_fock()  
+        self.loc_actFOCK_kpts = self.ao_2_loc(self.fullfock_kpts, self.ao2lo)        
 
         # DF-like DMET
         self.xc_omega = xc_omega
@@ -122,7 +122,6 @@ class Local:
         Construct 1-RDM at each k-point in the local basis given a u mat
         mask is used for the Gamma-sampling case
         '''    
-        
         # Get modified mean-field Hamiltinian: h_tilder = h + u
         if OEH_type == 'FOCK':
             OEH_kpts = self.loc_actFOCK_kpts + umat  
@@ -147,7 +146,6 @@ class Local:
         
         loc_OED = np.asarray([np.dot(eigvecs[kpt][:,mo_occ[kpt]>0]*mo_occ[kpt][mo_occ[kpt]>0], eigvecs[kpt][:,mo_occ[kpt]>0].T.conj())
                                             for kpt in range(self.Nkpts)], dtype=np.complex128)       
-
         if get_band:
             return eigvals, eigvecs
         elif get_ham:
@@ -168,6 +166,19 @@ class Local:
         OEI = lib.einsum('kum,kuv,kvn->mn', ao2eo.conj(), self.actOEI_kpts, ao2eo)
         self.is_real(OEI)
         return OEI.real
+    
+    def get_real_space_OEI_for_MCPDFT(self, loc_1RDM_kpts, ao2eo):
+        '''Get OEI+JK in AO basis - under development'''
+        ao_1RDM_kpts = self.loc_2_ao(loc_1RDM_kpts)
+        if self._is_KROHF:
+            dma = dmb = ao_1RDM_kpts * 0.5
+            ao_JK_ab = self.kmf.get_veff(self.cell, dm_kpts=[dma,dmb], hermi=1, kpts=self.kpts, kpts_band=None)
+            ao_JK = 0.5 * (ao_JK_ab[0] + ao_JK_ab[1])
+        else:
+            ao_JK = self.kmf.get_veff(self.cell, dm_kpts=ao_1RDM_kpts, hermi=1, kpts=self.kpts, kpts_band=None)
+        fock = self.actOEI_kpts+ao_JK
+        self.is_real(fock)
+        return fock.real
         
     def get_core_OEI(self, ao2core):
         '''Get OEI projected into the core (unentangled) basis'''
@@ -291,6 +302,64 @@ class Local:
         emb_1RDM = lib.einsum('kim, kij, kjn -> mn', lo2eo.conj(), RDM_kpts, lo2eo)
         self.is_real(emb_1RDM)
         return emb_1RDM.real 
+
+    def make_emb_space_RDM(self, RDM_kpts, emb_orbs, core_orbs, emb_core_orbs):
+        '''Transform k-space 1-RDM in local basis to embedding basis'''   
+        lo2eo = lib.einsum('Rk, Rim -> kim', self.phase.conj(), emb_orbs) 
+        emb_1RDM = lib.einsum('kim, kij, kjn -> mn', lo2eo.conj(), RDM_kpts, lo2eo)
+        lo2core = lib.einsum('Rk, Rim -> kim', self.phase.conj(), core_orbs) 
+        core_1RDM = lib.einsum('kim, kij, kjn -> mn', lo2core.conj(), RDM_kpts, lo2core)
+        lo2_emb_core = lib.einsum('Rk, Rim -> kim', self.phase.conj(), [emb_core_orbs]) 
+        emb_core_1RDM_for_mcpdft = lib.einsum('kim, kij, kjn -> mn', lo2_emb_core.conj(), RDM_kpts, lo2_emb_core)
+        emb_core_1RDM_for_mcpdft_lo_basis=lib.einsum('mi, ij, nj -> mn', lo2_emb_core[0], emb_core_1RDM_for_mcpdft, lo2_emb_core[0]).real
+        emb_core_1RDM_for_mcpdft_ao_basis=lib.einsum('mi, ij, nj -> mn', self.ao2lo[0], emb_core_1RDM_for_mcpdft_lo_basis, self.ao2lo[0]).real
+        dummy_ao2eo = lib.einsum('ui, im -> um', self.ao2lo[0], lo2_emb_core[0]) 
+        emb_core_1RDM_for_mcpdft_ao_basis2=lib.einsum('mi, ij, nj -> mn', dummy_ao2eo, emb_core_1RDM_for_mcpdft_lo_basis, dummy_ao2eo.conj()).real
+        ao2eo_core_emb = self.get_ao2eo([emb_core_orbs])
+        emb_core_1RDM_for_mcpdft_ao_basis3=lib.einsum('mi, ij, nj -> mn', ao2eo_core_emb[0], emb_core_1RDM_for_mcpdft_lo_basis, ao2eo_core_emb.conj()[0]).real
+        self.is_real(emb_1RDM)
+        return emb_core_1RDM_for_mcpdft
+        
+        
+    def loc_kpts_to_emb_trial_2(self, RDM_kpts, emb_orbs, core_orbs, emb_core_orbs, emb_core_1RDM_for_mcpdft):
+        '''Transform k-space 1-RDM in local basis to embedding basis'''   
+        lo2eo = lib.einsum('Rk, Rim -> kim', self.phase.conj(), emb_orbs) 
+        emb_1RDM = lib.einsum('kim, kij, kjn -> mn', lo2eo.conj(), RDM_kpts, lo2eo)
+        lo2core = lib.einsum('Rk, Rim -> kim', self.phase.conj(), core_orbs) 
+        core_1RDM = lib.einsum('kim, kij, kjn -> mn', lo2core.conj(), RDM_kpts, lo2core)
+        lo2_emb_core = lib.einsum('Rk, Rim -> kim', self.phase.conj(), [emb_core_orbs]) 
+        emb_core_1RDM_for_mcpdft_lo_basis=lib.einsum('mi, ij, nj -> mn', lo2_emb_core[0], emb_core_1RDM_for_mcpdft, lo2_emb_core[0]).real
+        emb_core_1RDM_for_mcpdft_ao_basis=lib.einsum('mi, ij, nj -> mn', self.ao2lo[0], emb_core_1RDM_for_mcpdft_lo_basis, self.ao2lo[0]).real
+        dummy_ao2eo = lib.einsum('ui, im -> um', self.ao2lo[0], lo2_emb_core[0]) 
+        emb_core_1RDM_for_mcpdft_ao_basis2=lib.einsum('mi, ij, nj -> mn', dummy_ao2eo, emb_core_1RDM_for_mcpdft, dummy_ao2eo.conj()).real
+        ao2eo_core_emb = self.get_ao2eo([emb_core_orbs])
+        emb_core_1RDM_for_mcpdft_ao_basis3=lib.einsum('mi, ij, nj -> mn', ao2eo_core_emb[0], emb_core_1RDM_for_mcpdft_lo_basis, ao2eo_core_emb.conj()[0]).real
+        self.is_real(emb_1RDM)
+        return emb_core_1RDM_for_mcpdft_ao_basis
+
+    def loc_kpts_to_emb_trial(self, RDM_kpts, emb_orbs, core_orbs, emb_core_orbs):
+        '''Transform k-space 1-RDM in local basis to embedding basis'''   
+        lo2eo = lib.einsum('Rk, Rim -> kim', self.phase.conj(), emb_orbs) 
+        emb_1RDM = lib.einsum('kim, kij, kjn -> mn', lo2eo.conj(), RDM_kpts, lo2eo)
+        lo2core = lib.einsum('Rk, Rim -> kim', self.phase.conj(), core_orbs) 
+        core_1RDM = lib.einsum('kim, kij, kjn -> mn', lo2core.conj(), RDM_kpts, lo2core)
+        lo2_emb_core = lib.einsum('Rk, Rim -> kim', self.phase.conj(), [emb_core_orbs]) 
+        emb_core_1RDM_for_mcpdft = lib.einsum('kim, kij, kjn -> mn', lo2_emb_core.conj(), RDM_kpts, lo2_emb_core)
+        emb_core_1RDM_for_mcpdft_lo_basis=lib.einsum('mi, ij, nj -> mn', lo2_emb_core[0], emb_core_1RDM_for_mcpdft, lo2_emb_core[0]).real
+        emb_core_1RDM_for_mcpdft_ao_basis=lib.einsum('mi, ij, nj -> mn', self.ao2lo[0], emb_core_1RDM_for_mcpdft_lo_basis, self.ao2lo[0]).real
+        dummy_ao2eo = lib.einsum('ui, im -> um', self.ao2lo[0], lo2_emb_core[0]) 
+        emb_core_1RDM_for_mcpdft_ao_basis2=lib.einsum('mi, ij, nj -> mn', dummy_ao2eo, emb_core_1RDM_for_mcpdft_lo_basis, dummy_ao2eo.conj()).real
+        ao2eo_core_emb = self.get_ao2eo([emb_core_orbs])
+        emb_core_1RDM_for_mcpdft_ao_basis3=lib.einsum('mi, ij, nj -> mn', ao2eo_core_emb[0], emb_core_1RDM_for_mcpdft_lo_basis, ao2eo_core_emb.conj()[0]).real
+        self.is_real(emb_1RDM)
+        return emb_core_1RDM_for_mcpdft_ao_basis3       
+        
+    def loc_kpts_to_core(self, RDM_kpts, core_orbs):
+        '''Transform k-space 1-RDM in local basis to embedding basis'''   
+        lo2eo = lib.einsum('Rk, Rim -> kim', self.phase.conj(), emb_orbs) 
+        emb_1RDM = lib.einsum('kim, kij, kjn -> mn', lo2eo.conj(), RDM_kpts, lo2eo)
+        self.is_real(emb_1RDM)
+        return emb_1RDM.real 
         
     def get_emb_mf_1RDM(self, emb_FOCK, Nelec_in_emb):
         '''Get k-space 1-RDM  or derivative 1-RDM in the embedding basis''' 
@@ -354,8 +423,8 @@ class Local:
         for kpt in range(self.Nkpts):
             mo_included = w90.mo_coeff_kpts[kpt][:,w90.band_included_list]
             mo_in_window = w90.lwindow[kpt]         
-            C_opt = mo_included[:,mo_in_window].dot(w90.U_matrix_opt[kpt][ :, mo_in_window].T)           
-            ao2lo.append(C_opt.dot(w90.U_matrix[kpt].T))        
+            C_opt = mo_included[:,mo_in_window].dot(w90.U_matrix_opt[kpt][ :, mo_in_window].T)  
+            ao2lo.append(C_opt.dot(w90.U_matrix[kpt].T)) 
            
         ao2lo = np.asarray(ao2lo, dtype=np.complex128)
         return ao2lo

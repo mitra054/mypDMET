@@ -33,7 +33,7 @@ def get_bath_using_RHF_1RDM(supercell_1RDM, imp_indices=None, is_ROHF=False, num
     Attributes:
         supercell_1RDM_{0,L}        : the 1-RDM of the reference unit cell
     '''    
-    NR, Nimp, Nimp = supercell_1RDM.shape
+    NR, Nimp, Nimp = supercell_1RDM.shape #supercell_1RDM is loc_1RDM_R0
     Nlo = NR * Nimp
     if imp_indices is None:
         supercell_1RDM = supercell_1RDM.reshape(Nlo, Nimp)
@@ -70,13 +70,12 @@ def get_bath_using_RHF_1RDM(supercell_1RDM, imp_indices=None, is_ROHF=False, num
         # Diagonalize the imp-imp block of 1-RDM
         U, sigma_imp, Vh = np.linalg.svd(imp_emb_1RDM, full_matrices=True)
         V = Vh.T
-        
         # Diagonalize the env-env block of 1-RDM
         U, sigma_env, Vh_ = np.linalg.svd(env_emb_1RDM, full_matrices=True)
         distance_from_1 = abs(sigma_env - 1)
         idx = (distance_from_1).argsort()
         sigma_env = sigma_env[idx]
-        U = U[:,idx]        
+        U = U[:,idx]              
 
         # Eliminate unentangled bath using a threshold:
         if bath_truncation and num_bath is None:
@@ -93,12 +92,11 @@ def get_bath_using_RHF_1RDM(supercell_1RDM, imp_indices=None, is_ROHF=False, num
     # Assemble the embedding + core orbitals
     Nemb = Nimp + Nbath
     emb_orbs = np.zeros([Nlo, Nemb])
-    emb_orbs[imp_indices==1,:Nimp] = V                      # impurity orbitals
-    emb_orbs[imp_indices==0,Nimp:] = U[:,:Nbath]            # bath orbitals
+    emb_orbs[imp_indices==1,:Nimp] = V     # impurity orbitals
+    emb_orbs[imp_indices==0,Nimp:] = U[:,:Nbath] 
     core_orbs = np.zeros([Nlo, Nlo - Nemb])
     core_orbs[imp_indices==0,:] = U[:,Nbath:]
-    
-    emb_core_orbs = np.hstack([emb_orbs, core_orbs])
+    emb_core_orbs = np.hstack([emb_orbs, core_orbs]) #This is what we need 
     assert(np.linalg.norm(np.dot(emb_core_orbs.T, emb_core_orbs) - np.identity(Nlo)) < 1e-12 ), "WARNING: The embedding orbitals is not orthogonal"
 
     return emb_orbs, core_orbs, Nelec, Nbath
