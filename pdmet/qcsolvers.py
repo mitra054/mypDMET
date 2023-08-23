@@ -1837,11 +1837,11 @@ def get_E_ot (mc, rdm, ot, casdm1s, casdm1, casdm2, rdm1spin_sep_a, rdm1spin_sep
     moH_cas = mo_cas.conj ().T
     mo_core = mo_coeff[:,:ncore]
     moH_core = mo_core.conj ().T
-    print("mo_cas",mo_cas)
-    print("ao2eo_inv",ao2eo_inv.real)
-    print("lib.einsum('ap,pq->aq',  ao2eo[0].real, mo_cas )",lib.einsum('ap,pq->aq',  ao2eo_inv.real, mo_cas ))
-    print("mo_cas_ao2eo",mo_cas_ao2eo)
-    print("ao2eo[0]",ao2eo[0].real)
+    # print("mo_cas",mo_cas)
+    # print("ao2eo_inv",ao2eo_inv.real)
+    # print("lib.einsum('ap,pq->aq',  ao2eo[0].real, mo_cas )",lib.einsum('ap,pq->aq',  ao2eo_inv.real, mo_cas ))
+    # print("mo_cas_ao2eo",mo_cas_ao2eo)
+    # print("ao2eo[0]",ao2eo[0].real)
     t0 = (time.clock (), time.time ())
     spin = abs(mc.nelecas[0] - mc.nelecas[1])
     t0 = logger.timer (ot, 'rdms', *t0)
