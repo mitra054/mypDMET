@@ -1,3 +1,0 @@
-/home/mitra054/pDMET/pdmet/lib/build/CMakeFiles/rebuild_cache.dir
-/home/mitra054/pDMET/pdmet/lib/build/CMakeFiles/libdmet.dir
-/home/mitra054/pDMET/pdmet/lib/build/CMakeFiles/edit_cache.dir
